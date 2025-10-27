@@ -30,6 +30,7 @@ library(corrr)
 library(glmnet)
 library(pls)
 library(MLmetrics)
+library(dplyr)
 ```
 
 ```{r}
@@ -37,10 +38,10 @@ library(readxl)
 datosL <- read_excel("Resultados_de_Análisis_de_Laboratorio_Suelos_en_Colombia_20251027.xlsx")
 head(datosL)
 ```
-
+# Limpieza de variables
 ```{r}
 # Eliminar las columnas innecesarias dejando aquellas relacionadas con los aspectos fisicos y quimicos
-datosL <- datosL[, !names(datosL) %in% c(
+datosL1 <- datosL[, !names(datosL) %in% c(
   "Secuencial",
   "Fecha de Análisis",
   "Departamento",
@@ -56,7 +57,7 @@ datosL <- datosL[, !names(datosL) %in% c(
 )]
 
 # Verificar que esten las variables que se utilizaran para el modelo Lasso
-names(datosL)
+names(datosL1)
 ```
 En esta etapa se realizó un proceso de depuración de las variables incluidas en la base de datos con el objetivo de eliminar aquellas que no aportan información relevante al estudio y evitar problemas de colinealidad en el modelo.
 
@@ -65,3 +66,84 @@ En primer lugar, se excluyeron las variables administrativas y descriptivas como
 Posteriormente, se eliminaron las variables medidas por el método de Doble Ácido (Hierro disponible doble ácido, Cobre disponible doble ácido, Manganeso disponible doble ácido y Zinc disponible doble ácido), dado que representan duplicados de los mismos micronutrientes ya evaluados mediante el método Olsen, que es el estándar más aceptado para estimar la fracción disponible de estos elementos. Mantener ambas mediciones podría introducir redundancia y multicolinealidad en el modelo Lasso.
 
 Finalmente, se conservaron las variables físicas (Topografía, Drenaje y Riego) y las químicas (pH, Fósforo, Calcio, Magnesio, Potasio, Sodio, Conductividad eléctrica, entre otras), las cuales inciden directamente sobre la materia orgánica del suelo, variable dependiente del estudio. Estas variables permiten capturar la interacción entre las condiciones edáficas y la disponibilidad de nutrientes, factores determinantes en la fertilidad de los suelos agrícolas de Colombia.
+
+```{r}
+datosL1$Topografia <- as.factor(datosL$Topografia)
+datosL1$Drenaje <- as.factor(datosL$Drenaje)
+datosL1$Riego <- as.factor(datosL$Riego)
+```
+
+```{r}
+levels(datosL1$Topografia)
+```
+
+```{r}
+levels(datosL1$Drenaje)
+```
+
+```{r}
+levels(datosL1$Riego)
+```
+
+# Transformación y codificación de variables categóricas  
+
+```{r}
+datosL2 <- datosL1
+datosL2$Topografia <- recode(datosL2$Topografia,
+  "Plano" = 5,
+  "Plano y ondulado" = 4,
+  "Plano y pendiente" = 4,
+  "Ligeramente ondulado" = 3,
+  "Moderadamente ondulado" = 2,
+  "Ondulado" = 2,
+  "Ondulado y Pendiente" = 1,
+  "Pendiente leve" = 1,
+  "Pendiente moderada" = 1,
+  "Pendiente" = 1,
+  "Pendiente fuerte" = 0,
+  "Fuertemente ondulado" = 0
+)
+
+datosL2$Topografia[datosL2$Topografia == "No indica"] <- NA
+
+datosL2$Drenaje <- recode(datosL2$Drenaje,
+  "Muy mal drenaje" = 0,
+  "Mal drenaje" = 1,
+  "Regular drenaje" = 2,
+  "Buen drenaje" = 3,
+  "Muy buen drenaje" = 4
+)
+datosL2$Drenaje[datosL2$Drenaje == "No indica"] <- NA
+
+datosL2$Riego <- recode(datosL2$Riego,
+  "No Tiene" = 0,
+  "Gravedad" = 1,
+  "Por Inundación" = 1,
+  "Superficial" = 1,
+  "Superficial - Inundación" = 2,
+  "Superficial-Aspersión" = 2,
+  "Superficial - Goteo" = 2,
+  "Manguera" = 3,
+  "Cañon" = 3,
+  "Aspersión" = 4,
+  "Aspersión - Manguera" = 4,
+  "Goteo" = 5,
+  "Aspersión - Goteo" = 5,
+  "Fertirriego" = 5,
+  "Goteo - Gravedad" = 5
+)
+datosL2$Riego[datosL2$Riego %in% c("No indica", "No Indica")] <- NA
+
+datosL2$Topografia <- as.numeric(datosL2$Topografia)
+datosL2$Drenaje <- as.numeric(datosL2$Drenaje)
+datosL2$Riego <- as.numeric(datosL2$Riego)
+
+```
+
+En esta etapa se realizó la transformación de las variables categóricas Topografía, Drenaje y Riego a valores numéricos con el fin de incorporarlas en los modelos Ridge y Lasso.
+Se asignaron valores ordinales basados en criterios agronómicos, donde valores mayores representan condiciones más favorables para la fertilidad del suelo.
+Además, las categorías “No indica” se trataron como valores faltantes (NA), ya que corresponden a información no reportada y no deben confundirse con valores válidos como “No Tiene”.
+Esta codificación garantiza coherencia en la interpretación de las variables y permite su uso adecuado en los modelos de regresión penalizada.
+
+
+

@@ -41,7 +41,7 @@ head(datosR)
 
 ```{r}
 # Eliminar las columnas innecesarias dejando aquellas relacionadas con los aspectos fisicos y quimicos
-datosR <- datosR[, !names(datosR) %in% c(
+datosR1 <- datosR[, !names(datosR) %in% c(
   "Secuencial",
   "Fecha de Análisis",
   "Departamento",
@@ -57,7 +57,7 @@ datosR <- datosR[, !names(datosR) %in% c(
 )]
 
 # Verificar que esten las variables que se utilizaran para el modelo Ridge
-names(datosR)
+names(datosR1)
 ```
 
 En esta etapa se realizó un proceso de depuración de las variables incluidas en la base de datos con el objetivo de eliminar aquellas que no aportan información relevante al estudio y evitar problemas de colinealidad en el modelo.
@@ -67,3 +67,81 @@ En primer lugar, se excluyeron las variables administrativas y descriptivas como
 Posteriormente, se eliminaron las variables medidas por el método de Doble Ácido (Hierro disponible doble ácido, Cobre disponible doble ácido, Manganeso disponible doble ácido y Zinc disponible doble ácido), dado que representan duplicados de los mismos micronutrientes ya evaluados mediante el método Olsen, que es el estándar más aceptado para estimar la fracción disponible de estos elementos. Mantener ambas mediciones podría introducir redundancia y multicolinealidad en el modelo Ridge.s
 
 Finalmente, se conservaron las variables físicas (Topografía, Drenaje y Riego) y las químicas (pH, Fósforo, Calcio, Magnesio, Potasio, Sodio, Conductividad eléctrica, entre otras), las cuales inciden directamente sobre la materia orgánica del suelo, variable dependiente del estudio. Estas variables permiten capturar la interacción entre las condiciones edáficas y la disponibilidad de nutrientes, factores determinantes en la fertilidad de los suelos agrícolas de Colombia.
+
+# Transformación y codificación de variables categóricas 
+
+```{r}
+datosR1$Topografia <- as.factor(datosR$Topografia)
+datosR1$Drenaje <- as.factor(datosR$Drenaje)
+datosR1$Riego <- as.factor(datosR$Riego)
+```
+
+```{r}
+levels(datosR1$Topografia)
+```
+
+```{r}
+levels(datosR1$Drenaje)
+```
+
+```{r}
+levels(datosR1$Riego)
+```
+
+```{r}
+datosR2 <- datosR1
+datosR2$Topografia <- recode(datosR2$Topografia,
+  "Plano" = 5,
+  "Plano y ondulado" = 4,
+  "Plano y pendiente" = 4,
+  "Ligeramente ondulado" = 3,
+  "Moderadamente ondulado" = 2,
+  "Ondulado" = 2,
+  "Ondulado y Pendiente" = 1,
+  "Pendiente leve" = 1,
+  "Pendiente moderada" = 1,
+  "Pendiente" = 1,
+  "Pendiente fuerte" = 0,
+  "Fuertemente ondulado" = 0
+)
+
+datosR2$Topografia[datosR2$Topografia == "No indica"] <- NA
+
+datosR2$Drenaje <- recode(datosR2$Drenaje,
+  "Muy mal drenaje" = 0,
+  "Mal drenaje" = 1,
+  "Regular drenaje" = 2,
+  "Buen drenaje" = 3,
+  "Muy buen drenaje" = 4
+)
+datosR2$Drenaje[datosR2$Drenaje == "No indica"] <- NA
+
+datosR2$Riego <- recode(datosR2$Riego,
+  "No Tiene" = 0,
+  "Gravedad" = 1,
+  "Por Inundación" = 1,
+  "Superficial" = 1,
+  "Superficial - Inundación" = 2,
+  "Superficial-Aspersión" = 2,
+  "Superficial - Goteo" = 2,
+  "Manguera" = 3,
+  "Cañon" = 3,
+  "Aspersión" = 4,
+  "Aspersión - Manguera" = 4,
+  "Goteo" = 5,
+  "Aspersión - Goteo" = 5,
+  "Fertirriego" = 5,
+  "Goteo - Gravedad" = 5
+)
+datosR2$Riego[datosR2$Riego %in% c("No indica", "No Indica")] <- NA
+
+datosR2$Topografia <- as.numeric(datosR2$Topografia)
+datosR2$Drenaje <- as.numeric(datosR2$Drenaje)
+datosR2$Riego <- as.numeric(datosR2$Riego)
+
+```
+
+En esta etapa se realizó la transformación de las variables categóricas Topografía, Drenaje y Riego a valores numéricos con el fin de incorporarlas en los modelos Ridge y Lasso.
+Se asignaron valores ordinales basados en criterios agronómicos, donde valores mayores representan condiciones más favorables para la fertilidad del suelo.
+Además, las categorías “No indica” se trataron como valores faltantes (NA), ya que corresponden a información no reportada y no deben confundirse con valores válidos como “No Tiene”.
+Esta codificación garantiza coherencia en la interpretación de las variables y permite su uso adecuado en los modelos de regresión penalizada.
