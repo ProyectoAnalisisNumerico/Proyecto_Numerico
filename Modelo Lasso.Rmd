@@ -31,3 +31,10 @@ library(glmnet)
 library(pls)
 library(MLmetrics)
 ```
+
+```{r}
+library(readxl)
+datosL <- read_excel("Resultados_de_Análisis_de_Laboratorio_Suelos_en_Colombia_20251027.xlsx")
+head(datosL)
+```
+
