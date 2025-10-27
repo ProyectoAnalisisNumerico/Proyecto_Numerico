@@ -105,6 +105,14 @@ for (v in num_vars) {
 datosL <- datosL %>%
   mutate(across(where(is.character), ~replace_na(., "desconocido")))
 
+# 7.1 Eliminar filas donde Topografia, Drenaje o Riego sean "no indica" o "No Indica"
+datosL <- datosL %>%
+  filter(
+    !(tolower(Topografia) %in% c("no indica")),
+    !(tolower(Drenaje) %in% c("no indica")),
+    !(tolower(Riego) %in% c("no indica"))
+  )
+
 # 8. Convertir variables categóricas a factor
 cat_vars <- c("Drenaje", "Riego", "Topografia", "Cultivo")
 datosL <- datosL %>%
