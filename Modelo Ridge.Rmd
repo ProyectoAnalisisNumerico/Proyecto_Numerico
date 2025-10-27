@@ -145,3 +145,79 @@ En esta etapa se realizó la transformación de las variables categóricas Topog
 Se asignaron valores ordinales basados en criterios agronómicos, donde valores mayores representan condiciones más favorables para la fertilidad del suelo.
 Además, las categorías “No indica” se trataron como valores faltantes (NA), ya que corresponden a información no reportada y no deben confundirse con valores válidos como “No Tiene”.
 Esta codificación garantiza coherencia en la interpretación de las variables y permite su uso adecuado en los modelos de regresión penalizada.
+
+
+```{r}
+limpiar_columna <- function(x) {
+  x <- as.character(x)
+  x <- str_trim(x)                # eliminar espacios en blanco
+  x <- toupper(x)                 # uniformar texto
+  
+  # Reemplazar ND, NA, vacíos → NA real
+  x[x %in% c("ND", "NA", "", "N/D", "NULO")] <- NA
+  
+  # Reemplazar valores tipo "<0.09" → 0.045
+  x <- ifelse(str_detect(x, "^<"), 
+              as.numeric(sub("<", "", x)) / 2, 
+              x)
+  
+  # Convertir a numérico de forma segura (sin warnings)
+  suppressWarnings(as.numeric(x))
+}
+
+# Aplicar a las columnas numéricas
+cols_numericas <- c(
+  "pH agua:suelo",
+  "Materia organica",
+  "Fósforo Bray II",
+  "Azufre Fosfato monocalcico",
+  "Acidez Intercambiable",
+  "Aluminio intercambiable",
+  "Calcio intercambiable",
+  "Magnesio intercambiable",
+  "Potasio intercambiable",
+  "Sodio intercambiable",
+  "capacidad de intercambio cationico",
+  "Conductividad electrica",
+  "Hierro disponible olsen",
+  "Cobre disponible",
+  "Manganeso disponible Olsen",
+  "Zinc disponible Olsen",
+  "Boro disponible"
+)
+
+datosR2[cols_numericas] <- lapply(datosR2[cols_numericas], limpiar_columna)
+
+```
+
+# Preparación de los datos para el modelo
+
+## Separar variables dependiente e independientes
+```{r}
+# Separar variable dependiente (Y)
+yR <- datosR2$`Materia organica`
+
+# Seleccionar solo las predictoras numéricas (excluyendo Y)
+XR <- datosR2 %>%
+  select(-`Materia organica`) %>%
+  select(where(is.numeric))
+```
+
+## Escalar (estandarizar) las variables predictoras
+
+```{r}
+# Escalar (centrar y normalizar)
+X_scaledR <- as.data.frame(scale(XR))
+
+# Verificar medias y desviaciones
+apply(X_scaledR, 2, mean, na.rm = TRUE)[1:5]   # deberían ser ~0
+apply(X_scaledR, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
+```
+
+## Combinar datos en un dataset final
+
+```{r}
+datos_finalR <- cbind(X_scaledR, Materia_Organica = yR)
+datos_finalR <- na.omit(datos_finalR)
+head(datos_finalR)
+```
