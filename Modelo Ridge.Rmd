@@ -38,3 +38,32 @@ library(readxl)
 datosR <- read_excel("Resultados_de_Análisis_de_Laboratorio_Suelos_en_Colombia_20251027.xlsx")
 head(datosR)
 ```
+
+```{r}
+# Eliminar las columnas innecesarias dejando aquellas relacionadas con los aspectos fisicos y quimicos
+datosR <- datosR[, !names(datosR) %in% c(
+  "Secuencial",
+  "Fecha de Análisis",
+  "Departamento",
+  "Municipio",
+  "Cultivo",
+  "Estado",
+  "Tiempo de establecimiento",
+  "Fertilizantes aplicados",
+  "Hierro disponible doble acido",
+  "Cobre disponible doble acido",
+  "Manganeso disponible doble acido",
+  "Zinc disponible doble  acido"
+)]
+
+# Verificar que esten las variables que se utilizaran para el modelo Ridge
+names(datosR)
+```
+
+En esta etapa se realizó un proceso de depuración de las variables incluidas en la base de datos con el objetivo de eliminar aquellas que no aportan información relevante al estudio y evitar problemas de colinealidad en el modelo.
+
+En primer lugar, se excluyeron las variables administrativas y descriptivas como Secuencial, Fecha de análisis, Departamento, Municipio, Cultivo, Estado, Tiempo de establecimiento y Fertilizantes aplicados, ya que corresponden a información contextual o identificadores sin relación directa con las propiedades físico-químicas del suelo.
+
+Posteriormente, se eliminaron las variables medidas por el método de Doble Ácido (Hierro disponible doble ácido, Cobre disponible doble ácido, Manganeso disponible doble ácido y Zinc disponible doble ácido), dado que representan duplicados de los mismos micronutrientes ya evaluados mediante el método Olsen, que es el estándar más aceptado para estimar la fracción disponible de estos elementos. Mantener ambas mediciones podría introducir redundancia y multicolinealidad en el modelo Ridge.s
+
+Finalmente, se conservaron las variables físicas (Topografía, Drenaje y Riego) y las químicas (pH, Fósforo, Calcio, Magnesio, Potasio, Sodio, Conductividad eléctrica, entre otras), las cuales inciden directamente sobre la materia orgánica del suelo, variable dependiente del estudio. Estas variables permiten capturar la interacción entre las condiciones edáficas y la disponibilidad de nutrientes, factores determinantes en la fertilidad de los suelos agrícolas de Colombia.
