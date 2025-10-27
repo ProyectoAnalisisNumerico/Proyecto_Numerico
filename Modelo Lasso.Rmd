@@ -1,0 +1,33 @@
+---
+title: "Modelo Lasso"
+output: word_document
+---
+
+# Carga de paquetes
+
+```{r}
+#install.packages("faraway")
+#install.packages("tidyverse")
+#install.packages("skimr")
+#install.packages("DataExplorer")
+#install.packages("scales")
+#install.packages("corrr")
+###### Para el modelamiento #####
+#install.packages("glmnet")
+#install.packages("pls")
+#install.packages("MLmetrics")
+#install.packages("writexl")
+```
+
+# Carga de librerias
+```{r}
+library(faraway)
+library(tidyverse)
+library(skimr)
+library(DataExplorer)
+library(scales)
+library(corrr)
+library(glmnet)
+library(pls)
+library(MLmetrics)
+```
