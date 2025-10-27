@@ -32,9 +32,100 @@ library(pls)
 library(MLmetrics)
 ```
 
+# 1. Cargar base de datos
+
 ```{r}
 library(readxl)
 datosL <- read_excel("Resultados_de_Análisis_de_Laboratorio_Suelos_en_Colombia_20251027.xlsx")
 head(datosL)
 ```
+# Limpieza de datos
+```{r}
 
+# 2. Seleccionar variables relevantes
+vars_modelo <- c(
+  "Materia organica",
+  "pH agua:suelo",
+  "Fósforo Bray II",
+  "Potasio intercambiable",
+  "Calcio intercambiable",
+  "Magnesio intercambiable",
+  "Sodio intercambiable",
+  "Conductividad electrica",
+  "Drenaje",
+  "Riego",
+  "Topografia",
+  "Cultivo"
+)
+
+datosL <- datosL %>%
+  select(any_of(vars_modelo))
+
+# 3. Limpieza de texto
+limpiar_texto <- function(x) {
+  x <- tolower(x)
+  x <- trimws(x)
+  x <- gsub("no indica|nd", NA, x)
+  x <- gsub("no tiene", "sin_riego", x)
+  x <- gsub("mal drenaje", "mal_drenaje", x)
+  x <- gsub("buen drenaje", "buen_drenaje", x)
+  x <- gsub("regular drenaje", "regular_drenaje", x)
+  x <- gsub(" ", "_", x)
+  return(x)
+}
+
+datosL <- datosL %>%
+  mutate(across(where(is.character), limpiar_texto))
+
+# 4. Convertir a numéricas las columnas químicas
+convertir_num <- function(x) {
+  as.numeric(gsub(",", ".", gsub("<", "", as.character(x))))
+}
+
+num_vars <- c("Materia organica", "pH agua:suelo", "Fósforo Bray II", 
+              "Potasio intercambiable", "Calcio intercambiable", 
+              "Magnesio intercambiable", "Sodio intercambiable", 
+              "Conductividad electrica")
+
+datosL <- datosL %>%
+  mutate(across(all_of(num_vars), convertir_num))
+
+# 5. Eliminar filas completamente vacías o sin materia orgánica
+datosL <- datosL %>%
+  filter(!is.na(`Materia organica`))
+
+# 6. Imputar valores numéricos faltantes con la mediana
+for (v in num_vars) {
+  mediana <- median(datosL[[v]], na.rm = TRUE)
+  datosL[[v]][is.na(datosL[[v]])] <- mediana
+}
+
+# 7. Imputar categóricos con "desconocido"
+datosL <- datosL %>%
+  mutate(across(where(is.character), ~replace_na(., "desconocido")))
+
+# 8. Convertir variables categóricas a factor
+cat_vars <- c("Drenaje", "Riego", "Topografia", "Cultivo")
+datosL <- datosL %>%
+  mutate(across(all_of(cat_vars), as.factor))
+
+# 9. Crear base limpia final
+baseLR <- datosL  # Versión limpia y reducida
+
+# 10. Verificar estructura
+glimpse(baseLR)
+
+```
+
+
+```{r}
+head(baseLR)
+```
+
+# Que hace el codigo 
+
+Elimina filas sin datos o con valores “ND”
+Convierte todos los valores numéricos con comas o signos “<”
+Imputa valores faltantes con la mediana (para variables químicas)
+Estandariza texto y convierte variables categóricas en factores
+Genera un data frame limpio: baseLR
