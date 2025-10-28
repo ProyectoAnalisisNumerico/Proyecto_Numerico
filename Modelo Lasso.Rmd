@@ -153,12 +153,8 @@ limpiar_columna <- function(x) {
   x <- toupper(x)                 # uniformar texto
   
   # Reemplazar ND, NA, vacíos → NA real
-  x[x %in% c("ND", "NA", "", "N/D", "NULO")] <- NA
+  x[x %in% c("ND", "NA", "", "N/D", "NULO", "<0.09")] <- NA
   
-  # Reemplazar valores tipo "<0.09" → 0.045
-  x <- ifelse(str_detect(x, "^<"), 
-              as.numeric(sub("<", "", x)) / 2, 
-              x)
   
   # Convertir a numérico de forma segura (sin warnings)
   suppressWarnings(as.numeric(x))
