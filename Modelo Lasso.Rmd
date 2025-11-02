@@ -223,5 +223,47 @@ head(datos_finalL)
 # Preparar datos
 X_matrixL <- as.matrix(datos_finalL %>% select(-Materia_Organica))
 y_vectorL <- as.numeric(datos_finalL$Materia_Organica)
+
+set.seed(123)  # reproducibilidad
+
+lasso_model <- cv.glmnet(
+  X_matrixL,
+  y_vectorL,
+  alpha = 1,     # α = 1 → Lasso
+  nfolds = 10
+)
+```
+
+```{r}
+# Visualizar curva de validación
+plot(lasso_model)
+lasso_lambda <- lasso_model$lambda.min
+lasso_lambda  # mejor λ encontrado
+```
+
+```{r}
+# Coeficientes del modelo
+lasso_coef <- as.matrix(coef(lasso_model, s = "lambda.min"))
+lasso_coef
+```
+
+```{r}
+# Error medio de validación cruzada
+lasso_error <- lasso_model$cvm[which.min(lasso_model$cvm)]
+lasso_error
+```
+
+```{r}
+# Predicciones y R²
+pred_lasso <- predict(lasso_model, s = lasso_lambda, newx = X_matrixL)
+r2_lasso <- cor(y_vectorL, pred_lasso)^2
+r2_lasso
+```
+
+```{r}
+barplot(sort(lasso_coef[,1]),
+        main = "Importancia de variables - Modelo Lasso",
+        las = 2, cex.names = 0.7,
+        ylab = "Coeficiente penalizado")
 ```
 
