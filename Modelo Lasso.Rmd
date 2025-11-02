@@ -217,3 +217,11 @@ datos_finalL <- na.omit(datos_finalL)
 head(datos_finalL)
 ```
 
+##  MODELO LASSO (α = 1)
+
+```{r}
+# Preparar datos
+X_matrixL <- as.matrix(datos_finalL %>% select(-Materia_Organica))
+y_vectorL <- as.numeric(datos_finalL$Materia_Organica)
+```
+
