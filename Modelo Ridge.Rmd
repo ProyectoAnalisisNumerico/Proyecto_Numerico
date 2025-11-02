@@ -216,3 +216,54 @@ datos_finalR <- cbind(X_scaledR, Materia_Organica = yR)
 datos_finalR <- na.omit(datos_finalR)
 head(datos_finalR)
 ```
+
+## MODELO RIDGE (α = 0)
+
+```{r}
+# Preparar datos
+X_matrixR <- as.matrix(datos_finalR %>% select(-Materia_Organica))
+y_vectorR <- as.numeric(datos_finalR$Materia_Organica)
+
+set.seed(123)  # reproducibilidad
+
+ridge_model <- cv.glmnet(
+  X_matrixR,
+  y_vectorR,
+  alpha = 0,     # α = 0 → Ridge
+  nfolds = 10
+)
+```
+
+```{r}
+# Visualizar curva de validación
+plot(ridge_model)
+ridge_lambda <- ridge_model$lambda.min
+ridge_lambda  # mejor λ encontrado
+```
+```{r}
+# Coeficientes del modelo
+ridge_coef <- as.matrix(coef(ridge_model, s = "lambda.min"))
+ridge_coef
+```
+
+```{r}
+# Error medio de validación cruzada
+ridge_error <- ridge_model$cvm[which.min(ridge_model$cvm)]
+ridge_error
+```
+
+```{r}
+# Predicciones y R²
+pred_ridge <- predict(ridge_model, s = ridge_lambda, newx = X_matrixR)
+r2_ridge <- cor(y_vectorR, pred_ridge)^2
+r2_ridge
+```
+
+```{r}
+# Visualizar importancia relativa de variables
+barplot(sort(ridge_coef[,1]),
+        main = "Importancia de variables - Modelo Ridge",
+        las = 2, cex.names = 0.7,
+        ylab = "Coeficiente penalizado")
+```
+
