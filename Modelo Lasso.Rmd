@@ -217,11 +217,11 @@ datos_finalL <- na.omit(datos_finalL)
 head(datos_finalL)
 ```
 
-##  MODELO LASSO (α = 1)
+#  MODELO LASSO (α = 1)
 
 ```{r}
 set.seed(1235)
-id_train <- sample(1:nrow(datos_finalL), size = 0.7 * nrow(datos_finalL), replace = FALSE)
+id_train <- sample(1:nrow(datos_finalL), size = 0.7 * nrow(datos_finalL), replace = F)
 
 datos_train <- datos_finalL[id_train, ]
 datos_test  <- datos_finalL[-id_train, ]
@@ -231,19 +231,22 @@ dim(datos_train); dim(datos_test)
 
 ```{r}
 x_train <- model.matrix(Materia_Organica ~ ., data = datos_train)[, -1] # El -1 quita la primera columna (intercepto)
-y_train <- datos_train$Materia_Organica
+y_pre_train <- datos_train$Materia_Organica
 
 x_test <- model.matrix(Materia_Organica ~ ., data = datos_test)[, -1]
-y_test <- datos_test$Materia_Organica
+y_pre_test <- datos_test$Materia_Organica
+
+y_train <- log1p(y_pre_train) 
+y_test <- log1p(y_pre_test)
 ```
 
 ```{r}
 modelo <- glmnet(
-x = x_train,
-y = y_train,
-alpha = 1, # Regularización LASSO (L1)
-nlambda = 100, 
-standardize = TRUE 
+  x = x_train,
+  y = y_train,
+  alpha = 1, # Regularización LASSO (L1)
+  nlambda = 100, 
+  standardize = TRUE 
 )
 ```
 
@@ -275,6 +278,7 @@ y = "Valor del coeficiente") +
 theme_bw() +
 theme(legend.position = "none")
 ```
+# Evolución del error en función de lambda
 
 ```{r}
 set.seed(123)
@@ -349,4 +353,5 @@ mean(abs((real - pred) / real), na.rm = TRUE)
 MAPE_val <- round(MAPE(predicciones_test, y_test) * 100, 2)
 paste("MAPE:", MAPE_val, "%")
 ```
+
 
