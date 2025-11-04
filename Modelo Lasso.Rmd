@@ -354,4 +354,35 @@ MAPE_val <- round(MAPE(predicciones_test, y_test) * 100, 2)
 paste("MAPE:", MAPE_val, "%")
 ```
 
+# Comparación predicciones con los valores reales de Materia orgánica.
 
+```{r}
+# Volver a la escala original: exp(valor) - 1
+pred_test_real <- exp(predicciones_test) - 1
+real_test <- exp(y_test) - 1
+
+head(pred_test_real)
+head(real_test)
+```
+
+
+```{r}
+comparacion <- data.frame(
+  Real = round(real_test[1:15], 3),
+  Predicho = round(pred_test_real[1:15], 3)
+)
+
+comparacion
+```
+
+
+
+```{r}
+plot(real_test, pred_test_real,
+     xlab = "Materia orgánica real",
+     ylab = "Materia orgánica predicha",
+     main = "Real vs Predicho - Modelo LASSO")
+abline(0, 1, col = "red")  # Línea perfecta (y = x)
+```
+
+El modelo LASSO logró identificar las variables físico-químicas más relevantes para explicar la materia orgánica del suelo y generó predicciones consistentes en el rango donde se concentra la mayoría de los datos. Sin embargo, el modelo tiende a sobreestimar los valores bajos y a subestimar los valores altos, lo que indica que no captura adecuadamente los comportamientos extremos de la variable dependiente. Esto puede deberse tanto a la transformación logarítmica aplicada como a la baja representatividad de valores altos en la base de datos. En general, el modelo es útil para estimaciones preliminares.
