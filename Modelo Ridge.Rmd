@@ -220,50 +220,141 @@ head(datos_finalR)
 ## MODELO RIDGE (α = 0)
 
 ```{r}
-# Preparar datos
-X_matrixR <- as.matrix(datos_finalR %>% select(-Materia_Organica))
-y_vectorR <- as.numeric(datos_finalR$Materia_Organica)
+set.seed(1235)
+id_train <- sample(1:nrow(datos_finalR), size = 0.7 * nrow(datos_finalR), replace = FALSE)
 
-set.seed(123)  # reproducibilidad
+datos_train <- datos_finalR[id_train, ]
+datos_test <- datos_finalR[-id_train, ]
 
-ridge_model <- cv.glmnet(
-  X_matrixR,
-  y_vectorR,
-  alpha = 0,     # α = 0 → Ridge
-  nfolds = 10
+dim(datos_train); dim(datos_test)
+```
+
+```{r}
+x_train <- model.matrix(Materia_Organica ~ ., data = datos_train)[, -1]
+y_train <- datos_train$Materia_Organica
+
+x_test <- model.matrix(Materia_Organica ~ ., data = datos_test)[, -1]
+y_test <- datos_test$Materia_Organica
+```
+
+```{r}
+library(glmnet)
+
+modelo <- glmnet(
+  x = x_train,
+  y = y_train,
+  alpha = 0,      # Regularización Ridge
+  nlambda = 100,
+  standardize = TRUE
 )
 ```
 
+
 ```{r}
-# Visualizar curva de validación
-plot(ridge_model)
-ridge_lambda <- ridge_model$lambda.min
-ridge_lambda  # mejor λ encontrado
-```
-```{r}
-# Coeficientes del modelo
-ridge_coef <- as.matrix(coef(ridge_model, s = "lambda.min"))
-ridge_coef
+regularizacion <- modelo$beta %>%
+as.matrix() %>%
+t() %>%
+as_tibble() %>%
+mutate(lambda = modelo$lambda)
+
+regularizacion <- regularizacion %>%
+pivot_longer(
+cols = !lambda,
+names_to = "predictor",
+values_to = "coeficientes"
+)
+
+regularizacion %>%
+ggplot(aes(x = lambda, y = coeficientes, color = predictor)) +
+geom_line() +
+scale_x_log10(
+breaks = trans_breaks("log10", function(x) 10^x),
+labels = trans_format("log10", math_format(10^.x))
+) +
+labs(title = "Coeficientes en función de la regularización (Ridge)",
+x = "λ (penalización logarítmica)",
+y = "Valor del coeficiente") +
+theme_bw() +
+theme(legend.position = "none")
 ```
 
 ```{r}
-# Error medio de validación cruzada
-ridge_error <- ridge_model$cvm[which.min(ridge_model$cvm)]
-ridge_error
+set.seed(123)
+cv_error <- cv.glmnet(
+x = x_train,
+y = y_train,
+alpha = 0,           # 0 = Ridge
+nfolds = 10,
+type.measure = "mse",
+standardize = TRUE
+)
+
+plot(cv_error)
 ```
 
 ```{r}
-# Predicciones y R²
-pred_ridge <- predict(ridge_model, s = ridge_lambda, newx = X_matrixR)
-r2_ridge <- cor(y_vectorR, pred_ridge)^2
-r2_ridge
+paste("Mejor Lambda encontrado:", cv_error$lambda.min)
 ```
 
 ```{r}
-# Visualizar importancia relativa de variables
-barplot(sort(ridge_coef[,1]),
-        main = "Importancia de variables - Modelo Ridge",
-        las = 2, cex.names = 0.7,
-        ylab = "Coeficiente penalizado")
+paste("Lambda óptimo + 1 desviación estándar:", cv_error$lambda.1se)
 ```
 
+```{r}
+modelo <- glmnet(
+x = x_train,
+y = y_train,
+alpha = 0,
+lambda = cv_error$lambda.1se,
+standardize = TRUE
+)
+```
+
+
+```{r}
+df_coeficientes <- coef(modelo) %>%
+as.matrix() %>%
+as_tibble(rownames = "predictor") %>%
+rename(coeficiente = s0)
+
+df_coeficientes %>%
+filter(predictor != "(Intercept)") %>%
+ggplot(aes(x = reorder(predictor, coeficiente), y = coeficiente, fill = coeficiente > 0)) +
+geom_col(show.legend = FALSE) +
+coord_flip() +
+labs(title = "Coeficientes del modelo Ridge",
+x = "Variable", y = "Valor del coeficiente") +
+theme_bw() +
+theme(axis.text.y = element_text(size = 7))
+
+library(writexl)
+write_xlsx(df_coeficientes, "Coeficientes_Ridge.xlsx")
+
+```
+
+```{r}
+predicciones_train <- predict(modelo, newx = x_train)
+```
+
+```{r}
+training_lasso <- mean((predicciones_train - y_train)^2)
+paste("Error (MSE) de entrenamiento:", training_lasso)
+```
+
+```{r}
+predicciones_test <- predict(modelo, newx = x_test)
+```
+
+```{r}
+test_mse_lasso <- mean((predicciones_test - y_test)^2)
+paste("Error (MSE) de test:", test_mse_lasso)
+```
+
+```{r}
+MAPE <- function(pred, real) {
+mean(abs((real - pred) / real), na.rm = TRUE)
+}
+
+MAPE_val <- round(MAPE(predicciones_test, y_test) * 100, 2)
+paste("MAPE:", MAPE_val, "%")
+```
