@@ -45,6 +45,9 @@ head(datosL)
 datosL1 <- datosL[, !names(datosL) %in% c(
   "Secuencial",
   "Fecha de Análisis",
+  "Topografia",
+  "Drenaje",
+  "Riego",
   "Departamento",
   "Municipio",
   "Cultivo",
@@ -68,78 +71,6 @@ Posteriormente, se eliminaron las variables medidas por el método de Doble Áci
 
 Finalmente, se conservaron las variables físicas (Topografía, Drenaje y Riego) y las químicas (pH, Fósforo, Calcio, Magnesio, Potasio, Sodio, Conductividad eléctrica, entre otras), las cuales inciden directamente sobre la materia orgánica del suelo, variable dependiente del estudio. Estas variables permiten capturar la interacción entre las condiciones edáficas y la disponibilidad de nutrientes, factores determinantes en la fertilidad de los suelos agrícolas de Colombia.
 
-#Transformación y codificación de variables categóricas 
-
-```{r}
-datosL1$Topografia <- as.factor(datosL$Topografia)
-datosL1$Drenaje <- as.factor(datosL$Drenaje)
-datosL1$Riego <- as.factor(datosL$Riego)
-```
-
-```{r}
-levels(datosL1$Topografia)
-```
-
-```{r}
-levels(datosL1$Drenaje)
-```
-
-```{r}
-levels(datosL1$Riego)
-```
-
-```{r}
-datosL2 <- datosL1
-datosL2$Topografia <- recode(datosL2$Topografia,
-  "Plano" = 5,
-  "Plano y ondulado" = 4,
-  "Plano y pendiente" = 4,
-  "Ligeramente ondulado" = 3,
-  "Moderadamente ondulado" = 2,
-  "Ondulado" = 2,
-  "Ondulado y Pendiente" = 1,
-  "Pendiente leve" = 1,
-  "Pendiente moderada" = 1,
-  "Pendiente" = 1,
-  "Pendiente fuerte" = 0,
-  "Fuertemente ondulado" = 0
-)
-
-datosL2$Topografia[datosL2$Topografia == "No indica"] <- NA
-
-datosL2$Drenaje <- recode(datosL2$Drenaje,
-  "Muy mal drenaje" = 0,
-  "Mal drenaje" = 1,
-  "Regular drenaje" = 2,
-  "Buen drenaje" = 3,
-  "Muy buen drenaje" = 4
-)
-datosL2$Drenaje[datosL2$Drenaje == "No indica"] <- NA
-
-datosL2$Riego <- recode(datosL2$Riego,
-  "No Tiene" = 0,
-  "Gravedad" = 1,
-  "Por Inundación" = 1,
-  "Superficial" = 1,
-  "Superficial - Inundación" = 2,
-  "Superficial-Aspersión" = 2,
-  "Superficial - Goteo" = 2,
-  "Manguera" = 3,
-  "Cañon" = 3,
-  "Aspersión" = 4,
-  "Aspersión - Manguera" = 4,
-  "Goteo" = 5,
-  "Aspersión - Goteo" = 5,
-  "Fertirriego" = 5,
-  "Goteo - Gravedad" = 5
-)
-datosL2$Riego[datosL2$Riego %in% c("No indica", "No Indica")] <- NA
-
-datosL2$Topografia <- as.numeric(datosL2$Topografia)
-datosL2$Drenaje <- as.numeric(datosL2$Drenaje)
-datosL2$Riego <- as.numeric(datosL2$Riego)
-
-```
 
 En esta etapa se realizó la transformación de las variables categóricas Topografía, Drenaje y Riego a valores numéricos con el fin de incorporarlas en los modelos Ridge y Lasso.
 Se asignaron valores ordinales basados en criterios agronómicos, donde valores mayores representan condiciones más favorables para la fertilidad del suelo.
@@ -147,6 +78,7 @@ Además, las categorías “No indica” se trataron como valores faltantes (NA)
 Esta codificación garantiza coherencia en la interpretación de las variables y permite su uso adecuado en los modelos de regresión penalizada.
 
 ```{r}
+datosL2 <- datosL1
 limpiar_columna <- function(x) {
   x <- as.character(x)
   x <- str_trim(x)                # eliminar espacios en blanco
@@ -325,6 +257,9 @@ x = "Variable", y = "Valor del coeficiente") +
 theme_bw() +
 theme(axis.text.y = element_text(size = 7))
 
+library(xlsx)
+write.xlsx(df_coeficientes, "Coeficientes_lasso.xlsx")
+
 ```
 
 ```{r}
@@ -376,13 +311,6 @@ comparacion
 ```
 
 
-
-```{r}
-plot(real_test, pred_test_real,
-     xlab = "Materia orgánica real",
-     ylab = "Materia orgánica predicha",
-     main = "Real vs Predicho - Modelo LASSO")
-abline(0, 1, col = "red")  # Línea perfecta (y = x)
-```
+`
 
 El modelo LASSO logró identificar las variables físico-químicas más relevantes para explicar la materia orgánica del suelo y generó predicciones consistentes en el rango donde se concentra la mayoría de los datos. Sin embargo, el modelo tiende a sobreestimar los valores bajos y a subestimar los valores altos, lo que indica que no captura adecuadamente los comportamientos extremos de la variable dependiente. Esto puede deberse tanto a la transformación logarítmica aplicada como a la baja representatividad de valores altos en la base de datos. En general, el modelo es útil para estimaciones preliminares.
