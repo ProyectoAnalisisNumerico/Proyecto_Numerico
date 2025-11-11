@@ -57,11 +57,17 @@ datosL1 <- datosL[, !names(datosL) %in% c(
   "Hierro disponible doble acido",
   "Cobre disponible doble acido",
   "Manganeso disponible doble acido",
-  "Zinc disponible doble  acido"
+  "Zinc disponible doble acido",
+  "Fósforo Bray II",
+  "Azufre Fosfato monocalcico",
+  "Acidez Intercambiable",
+  "Aluminio intercambiable",
+  "Calcio intercambiable",
+  "Cobre disponible"
 )]
 
 # Verificar que esten las variables que se utilizaran para el modelo Lasso
-names(datosL1)
+head(datosL1)
 ```
 En esta etapa se realizó un proceso de depuración de las variables incluidas en la base de datos con el objetivo de eliminar aquellas que no aportan información relevante al estudio y evitar problemas de colinealidad en el modelo.
 
@@ -96,24 +102,19 @@ limpiar_columna <- function(x) {
 cols_numericas <- c(
   "pH agua:suelo",
   "Materia organica",
-  "Fósforo Bray II",
-  "Azufre Fosfato monocalcico",
-  "Acidez Intercambiable",
-  "Aluminio intercambiable",
-  "Calcio intercambiable",
   "Magnesio intercambiable",
   "Potasio intercambiable",
   "Sodio intercambiable",
   "capacidad de intercambio cationico",
   "Conductividad electrica",
   "Hierro disponible olsen",
-  "Cobre disponible",
   "Manganeso disponible Olsen",
   "Zinc disponible Olsen",
   "Boro disponible"
 )
 
 datosL2[cols_numericas] <- lapply(datosL2[cols_numericas], limpiar_columna)
+head(datosL2)
 
 ```
 
@@ -133,13 +134,57 @@ XL <- datosL2 %>%
 ## Escalar (estandarizar) las variables predictoras
 
 ```{r}
+# Aplicar logaritmo natural
+XL <- as.data.frame(lapply(XL, log1p))
+
 # Escalar (centrar y normalizar)
 X_scaledL <- as.data.frame(scale(XL))
 
 # Verificar medias y desviaciones
 apply(X_scaledL, 2, mean, na.rm = TRUE)[1:5]   # deberían ser ~0
 apply(X_scaledL, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
+
+
 ```
+## Eliminar Outliers Extremos
+
+```{r}
+#vars_sesgadas <- c(
+#  "Azufre Fosfato monocalcico",
+#  "Potasio intercambiable",
+#  "Sodio intercambiable",
+#  "Zinc disponible Olsen",
+#  "Boro disponible"
+#)
+
+#winsorizar <- function(x, p = 0.99) {
+#  q <- quantile(x, probs = c(1 - p, p), na.rm = TRUE)
+#  x[x < q[1]] <- q[1]
+#  x[x > q[2]] <- q[2]
+#  return(x)
+#}
+
+#X_scaledL[vars_sesgadas] <- lapply(X_scaledL[vars_sesgadas], winsorizar)
+#head(X_scaledL)
+
+# Ajustar márgenes para que se vean todas las etiquetas
+#par(mar = c(10, 5, 4, 2) + 0.1)
+
+# Boxplot de las variables escaladas
+#boxplot(
+#  X_scaledL,
+#  main = "Distribución de variables químicas (tras Winsorizado y Escalado)",
+#  las = 2,             # Etiquetas del eje X en vertical
+#  cex.axis = 0.8,      # Tamaño de números del eje
+#  cex.names = 0.9,     # Tamaño de nombres de variables
+#  col = "skyblue",     # Color de cajas
+#  border = "gray40",   # Color de bordes
+#  outline = TRUE       # Mostrar outliers remanentes
+#)
+```
+
+
+
 
 ## Combinar datos en un dataset final
 
@@ -147,6 +192,7 @@ apply(X_scaledL, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
 datos_finalL <- cbind(X_scaledL, Materia_Organica = yL)
 datos_finalL <- na.omit(datos_finalL)
 head(datos_finalL)
+
 ```
 
 #  MODELO LASSO (α = 1)
@@ -178,7 +224,7 @@ modelo <- glmnet(
   y = y_train,
   alpha = 1, # Regularización LASSO (L1)
   nlambda = 100, 
-  standardize = TRUE 
+  standardize = FALSE 
 )
 ```
 
