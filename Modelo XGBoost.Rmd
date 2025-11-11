@@ -373,11 +373,11 @@ dtest  <- xgb.DMatrix(data = as.matrix(x_test), label = y_test)
 parametros <- list(
 booster = "gbtree",         # tipo de modelo
 objective = "reg:squarederror",  # regresión continua
-eta = 0.05,                 # tasa de aprendizaje
-max_depth = 6,              # profundidad de los árboles
+eta = 0.03,                 # tasa de aprendizaje
+max_depth = 8,              # profundidad de los árboles
 subsample = 0.8,            # muestreo aleatorio de observaciones
-colsample_bytree = 0.8,     # muestreo aleatorio de variables
-min_child_weight = 3,       # mínimo peso para dividir nodos
+colsample_bytree = 0.9,     # muestreo aleatorio de variables
+min_child_weight = 6,  # mínimo peso para dividir nodos
 gamma = 0                   # regularización adicional
 )
 
@@ -387,7 +387,7 @@ set.seed(123)
 xgb_model <- xgb.train(
 params = parametros,
 data = dtrain,
-nrounds = 500,                     # número máximo de iteraciones
+nrounds = 5000,                     # número máximo de iteraciones
 watchlist = list(train = dtrain, test = dtest),
 early_stopping_rounds = 30,        # detenerse si no mejora el error
 print_every_n = 20,                # mostrar progreso cada 20 iteraciones
@@ -449,11 +449,6 @@ y = "Materia orgánica predicha") +
 theme_bw()
 ```
 
-
-
-
-
-
-`
+u
 
 El modelo LASSO logró identificar las variables físico-químicas más relevantes para explicar la materia orgánica del suelo y generó predicciones consistentes en el rango donde se concentra la mayoría de los datos. Sin embargo, el modelo tiende a sobreestimar los valores bajos y a subestimar los valores altos, lo que indica que no captura adecuadamente los comportamientos extremos de la variable dependiente. Esto puede deberse tanto a la transformación logarítmica aplicada como a la baja representatividad de valores altos en la base de datos. En general, el modelo es útil para estimaciones preliminares.
