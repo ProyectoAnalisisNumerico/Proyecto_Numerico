@@ -147,38 +147,55 @@ apply(X_scaledL, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
 ## Eliminar Outliers Extremos
 
 ```{r}
-#vars_sesgadas <- c(
-#  "Azufre Fosfato monocalcico",
-#  "Potasio intercambiable",
-#  "Sodio intercambiable",
-#  "Zinc disponible Olsen",
-#  "Boro disponible"
-#)
-
-#winsorizar <- function(x, p = 0.99) {
-#  q <- quantile(x, probs = c(1 - p, p), na.rm = TRUE)
-#  x[x < q[1]] <- q[1]
-#  x[x > q[2]] <- q[2]
-#  return(x)
+#par(mfrow = c(1, 1))  # ajusta según la cantidad de variables
+#for (col in names(X_scaledL)) {
+#  boxplot(X_scaledL[[col]], 
+#          main = col, 
+#          col = "lightblue", 
+#          border = "darkblue",
+#          outline = TRUE,
+#          cex.axis = 0.6, cex.main = 0.8)
 #}
 
-#X_scaledL[vars_sesgadas] <- lapply(X_scaledL[vars_sesgadas], winsorizar)
-#head(X_scaledL)
+vars_sesgadas <- c(
+  "Azufre.Fosfato.monocalcico",
+  "Conductividad.electrica",
+  "Potasio.intercambiable",
+  "Sodio.intercambiable",
+  "Zinc.disponible.Olsen",
+  "Boro.disponible")
 
-# Ajustar márgenes para que se vean todas las etiquetas
-#par(mar = c(10, 5, 4, 2) + 0.1)
+winsorizar <- function(x, lower = 0.01, upper = 0.99) {
+  q <- quantile(x, probs = c(lower, upper), na.rm = TRUE)
+  x[x < q[1]] <- q[1]
+  x[x > q[2]] <- q[2]
+  return(x)
+}
 
-# Boxplot de las variables escaladas
-#boxplot(
-#  X_scaledL,
-#  main = "Distribución de variables químicas (tras Winsorizado y Escalado)",
-#  las = 2,             # Etiquetas del eje X en vertical
-#  cex.axis = 0.8,      # Tamaño de números del eje
-#  cex.names = 0.9,     # Tamaño de nombres de variables
-#  col = "skyblue",     # Color de cajas
-#  border = "gray40",   # Color de bordes
-#  outline = TRUE       # Mostrar outliers remanentes
-#)
+X_scaledL_wins <- X_scaledL
+X_scaledL_wins[vars_sesgadas] <- lapply(X_scaledL[vars_sesgadas], winsorizar)
+#X_scaledL_wins <- as.data.frame(lapply(X_scaledL, winsorizar))
+
+comparacion_rangos <- data.frame(
+  Variable = names(X_scaledL),
+  Min_Antes = sapply(X_scaledL, min, na.rm = TRUE),
+  Max_Antes = sapply(X_scaledL, max, na.rm = TRUE),
+  Min_Despues = sapply(X_scaledL_wins, min, na.rm = TRUE),
+  Max_Despues = sapply(X_scaledL_wins, max, na.rm = TRUE)
+)
+comparacion_rangos
+
+
+par(mfrow = c(1, 2))  # ajusta según la cantidad de variables
+for (col in names(X_scaledL_wins)) {
+  boxplot(X_scaledL_wins[[col]], 
+          main = col, 
+          col = "lightblue", 
+          border = "darkblue",
+          outline = TRUE,
+          cex.axis = 0.6, cex.main = 0.8)
+}
+par(mfrow = c(1, 1))
 ```
 
 
@@ -187,7 +204,7 @@ apply(X_scaledL, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
 ## Combinar datos en un dataset final
 
 ```{r}
-datos_finalL <- cbind(X_scaledL, Materia_Organica = yL)
+datos_finalL <- cbind(X_scaledL_wins, Materia_Organica = yL)
 datos_finalL <- na.omit(datos_finalL)
 head(datos_finalL)
 
@@ -222,7 +239,7 @@ modelo <- glmnet(
   y = y_train,
   alpha = 1,
   nlambda = 100, 
-  standardize = FALSE 
+  standardize = TRUE 
 )
 ```
 
@@ -267,6 +284,7 @@ type.measure = "mse"
 )
 
 plot(cv_error)
+
 ```
 
 ```{r}
@@ -355,6 +373,6 @@ comparacion
 ```
 
 
-`
+
 
 El modelo LASSO logró identificar las variables físico-químicas más relevantes para explicar la materia orgánica del suelo y generó predicciones consistentes en el rango donde se concentra la mayoría de los datos. Sin embargo, el modelo tiende a sobreestimar los valores bajos y a subestimar los valores altos, lo que indica que no captura adecuadamente los comportamientos extremos de la variable dependiente. Esto puede deberse tanto a la transformación logarítmica aplicada como a la baja representatividad de valores altos en la base de datos. En general, el modelo es útil para estimaciones preliminares.

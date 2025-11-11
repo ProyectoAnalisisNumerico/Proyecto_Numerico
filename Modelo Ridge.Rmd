@@ -2,7 +2,6 @@
 title: "Modelo Ridge"
 output: word_document
 ---
-
 # Carga de paquetes
 
 ```{r}
@@ -30,20 +29,24 @@ library(corrr)
 library(glmnet)
 library(pls)
 library(MLmetrics)
+library(dplyr)
+library(stringr)
 ```
 
-# Carga de la base
 ```{r}
 library(readxl)
-datosR <- read_excel("Resultados_de_Análisis_de_Laboratorio_Suelos_en_Colombia_20251027.xlsx")
-head(datosR)
+datosL <- read_excel("Resultados_de_Análisis_de_Laboratorio_Suelos_en_Colombia_20251027.xlsx")
+head(datosL)
 ```
-
+# Limpieza de variables
 ```{r}
 # Eliminar las columnas innecesarias dejando aquellas relacionadas con los aspectos fisicos y quimicos
-datosR1 <- datosR[, !names(datosR) %in% c(
+datosL1 <- datosL[, !names(datosL) %in% c(
   "Secuencial",
   "Fecha de Análisis",
+  "Topografia",
+  "Drenaje",
+  "Riego",
   "Departamento",
   "Municipio",
   "Cultivo",
@@ -53,101 +56,28 @@ datosR1 <- datosR[, !names(datosR) %in% c(
   "Hierro disponible doble acido",
   "Cobre disponible doble acido",
   "Manganeso disponible doble acido",
-  "Zinc disponible doble  acido"
+  "Zinc disponible doble acido"
 )]
 
 # Verificar que esten las variables que se utilizaran para el modelo Ridge
-names(datosR1)
+head(datosL1)
 ```
-
 En esta etapa se realizó un proceso de depuración de las variables incluidas en la base de datos con el objetivo de eliminar aquellas que no aportan información relevante al estudio y evitar problemas de colinealidad en el modelo.
 
 En primer lugar, se excluyeron las variables administrativas y descriptivas como Secuencial, Fecha de análisis, Departamento, Municipio, Cultivo, Estado, Tiempo de establecimiento y Fertilizantes aplicados, ya que corresponden a información contextual o identificadores sin relación directa con las propiedades físico-químicas del suelo.
 
-Posteriormente, se eliminaron las variables medidas por el método de Doble Ácido (Hierro disponible doble ácido, Cobre disponible doble ácido, Manganeso disponible doble ácido y Zinc disponible doble ácido), dado que representan duplicados de los mismos micronutrientes ya evaluados mediante el método Olsen, que es el estándar más aceptado para estimar la fracción disponible de estos elementos. Mantener ambas mediciones podría introducir redundancia y multicolinealidad en el modelo Ridge.s
+Posteriormente, se eliminaron las variables medidas por el método de Doble Ácido (Hierro disponible doble ácido, Cobre disponible doble ácido, Manganeso disponible doble ácido y Zinc disponible doble ácido), dado que representan duplicados de los mismos micronutrientes ya evaluados mediante el método Olsen, que es el estándar más aceptado para estimar la fracción disponible de estos elementos. Mantener ambas mediciones podría introducir redundancia y multicolinealidad en el modelo Ridge
 
 Finalmente, se conservaron las variables físicas (Topografía, Drenaje y Riego) y las químicas (pH, Fósforo, Calcio, Magnesio, Potasio, Sodio, Conductividad eléctrica, entre otras), las cuales inciden directamente sobre la materia orgánica del suelo, variable dependiente del estudio. Estas variables permiten capturar la interacción entre las condiciones edáficas y la disponibilidad de nutrientes, factores determinantes en la fertilidad de los suelos agrícolas de Colombia.
 
-# Transformación y codificación de variables categóricas 
-
-```{r}
-datosR1$Topografia <- as.factor(datosR$Topografia)
-datosR1$Drenaje <- as.factor(datosR$Drenaje)
-datosR1$Riego <- as.factor(datosR$Riego)
-```
-
-```{r}
-levels(datosR1$Topografia)
-```
-
-```{r}
-levels(datosR1$Drenaje)
-```
-
-```{r}
-levels(datosR1$Riego)
-```
-
-```{r}
-datosR2 <- datosR1
-datosR2$Topografia <- recode(datosR2$Topografia,
-  "Plano" = 5,
-  "Plano y ondulado" = 4,
-  "Plano y pendiente" = 4,
-  "Ligeramente ondulado" = 3,
-  "Moderadamente ondulado" = 2,
-  "Ondulado" = 2,
-  "Ondulado y Pendiente" = 1,
-  "Pendiente leve" = 1,
-  "Pendiente moderada" = 1,
-  "Pendiente" = 1,
-  "Pendiente fuerte" = 0,
-  "Fuertemente ondulado" = 0
-)
-
-datosR2$Topografia[datosR2$Topografia == "No indica"] <- NA
-
-datosR2$Drenaje <- recode(datosR2$Drenaje,
-  "Muy mal drenaje" = 0,
-  "Mal drenaje" = 1,
-  "Regular drenaje" = 2,
-  "Buen drenaje" = 3,
-  "Muy buen drenaje" = 4
-)
-datosR2$Drenaje[datosR2$Drenaje == "No indica"] <- NA
-
-datosR2$Riego <- recode(datosR2$Riego,
-  "No Tiene" = 0,
-  "Gravedad" = 1,
-  "Por Inundación" = 1,
-  "Superficial" = 1,
-  "Superficial - Inundación" = 2,
-  "Superficial-Aspersión" = 2,
-  "Superficial - Goteo" = 2,
-  "Manguera" = 3,
-  "Cañon" = 3,
-  "Aspersión" = 4,
-  "Aspersión - Manguera" = 4,
-  "Goteo" = 5,
-  "Aspersión - Goteo" = 5,
-  "Fertirriego" = 5,
-  "Goteo - Gravedad" = 5
-)
-datosR2$Riego[datosR2$Riego %in% c("No indica", "No Indica")] <- NA
-
-datosR2$Topografia <- as.numeric(datosR2$Topografia)
-datosR2$Drenaje <- as.numeric(datosR2$Drenaje)
-datosR2$Riego <- as.numeric(datosR2$Riego)
-
-```
 
 En esta etapa se realizó la transformación de las variables categóricas Topografía, Drenaje y Riego a valores numéricos con el fin de incorporarlas en los modelos Ridge y Lasso.
 Se asignaron valores ordinales basados en criterios agronómicos, donde valores mayores representan condiciones más favorables para la fertilidad del suelo.
 Además, las categorías “No indica” se trataron como valores faltantes (NA), ya que corresponden a información no reportada y no deben confundirse con valores válidos como “No Tiene”.
 Esta codificación garantiza coherencia en la interpretación de las variables y permite su uso adecuado en los modelos de regresión penalizada.
 
-
 ```{r}
+datosL2 <- datosL1
 limpiar_columna <- function(x) {
   x <- as.character(x)
   x <- str_trim(x)                # eliminar espacios en blanco
@@ -155,6 +85,7 @@ limpiar_columna <- function(x) {
   
   # Reemplazar ND, NA, vacíos → NA real
   x[x %in% c("ND", "NA", "", "N/D", "NULO", "<0.09")] <- NA
+  
   
   # Convertir a numérico de forma segura (sin warnings)
   suppressWarnings(as.numeric(x))
@@ -164,24 +95,25 @@ limpiar_columna <- function(x) {
 cols_numericas <- c(
   "pH agua:suelo",
   "Materia organica",
-  "Fósforo Bray II",
-  "Azufre Fosfato monocalcico",
-  "Acidez Intercambiable",
-  "Aluminio intercambiable",
-  "Calcio intercambiable",
   "Magnesio intercambiable",
   "Potasio intercambiable",
   "Sodio intercambiable",
   "capacidad de intercambio cationico",
   "Conductividad electrica",
   "Hierro disponible olsen",
-  "Cobre disponible",
   "Manganeso disponible Olsen",
   "Zinc disponible Olsen",
-  "Boro disponible"
+  "Boro disponible",
+  "Fósforo Bray II",
+  "Azufre Fosfato monocalcico",
+  "Acidez Intercambiable",
+  "Aluminio intercambiable",
+  "Calcio intercambiable",
+  "Cobre disponible"
 )
 
-datosR2[cols_numericas] <- lapply(datosR2[cols_numericas], limpiar_columna)
+datosL2[cols_numericas] <- lapply(datosL2[cols_numericas], limpiar_columna)
+head(datosL2)
 
 ```
 
@@ -190,10 +122,10 @@ datosR2[cols_numericas] <- lapply(datosR2[cols_numericas], limpiar_columna)
 ## Separar variables dependiente e independientes
 ```{r}
 # Separar variable dependiente (Y)
-yR <- datosR2$`Materia organica`
+yL <- datosL2$`Materia organica`
 
 # Seleccionar solo las predictoras numéricas (excluyendo Y)
-XR <- datosR2 %>%
+XL <- datosL2 %>%
   select(-`Materia organica`) %>%
   select(where(is.numeric))
 ```
@@ -201,56 +133,117 @@ XR <- datosR2 %>%
 ## Escalar (estandarizar) las variables predictoras
 
 ```{r}
+# Aplicar logaritmo natural
+XL <- as.data.frame(lapply(XL, log1p))
+
 # Escalar (centrar y normalizar)
-X_scaledR <- as.data.frame(scale(XR))
+X_scaledL <- as.data.frame(scale(XL))
 
 # Verificar medias y desviaciones
-apply(X_scaledR, 2, mean, na.rm = TRUE)[1:5]   # deberían ser ~0
-apply(X_scaledR, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
+apply(X_scaledL, 2, mean, na.rm = TRUE)[1:5]   # deberían ser ~0
+apply(X_scaledL, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
 ```
+## Eliminar Outliers Extremos
+
+```{r}
+#par(mfrow = c(1, 1))  # ajusta según la cantidad de variables
+#for (col in names(X_scaledL)) {
+#  boxplot(X_scaledL[[col]], 
+#          main = col, 
+#          col = "lightblue", 
+#          border = "darkblue",
+#          outline = TRUE,
+#          cex.axis = 0.6, cex.main = 0.8)
+#}
+
+vars_sesgadas <- c(
+  "Azufre.Fosfato.monocalcico",
+  "Conductividad.electrica",
+  "Potasio.intercambiable",
+  "Sodio.intercambiable",
+  "Zinc.disponible.Olsen",
+  "Boro.disponible")
+
+winsorizar <- function(x, lower = 0.01, upper = 0.99) {
+  q <- quantile(x, probs = c(lower, upper), na.rm = TRUE)
+  x[x < q[1]] <- q[1]
+  x[x > q[2]] <- q[2]
+  return(x)
+}
+
+X_scaledL_wins <- X_scaledL
+X_scaledL_wins[vars_sesgadas] <- lapply(X_scaledL[vars_sesgadas], winsorizar)
+#X_scaledL_wins <- as.data.frame(lapply(X_scaledL, winsorizar))
+
+comparacion_rangos <- data.frame(
+  Variable = names(X_scaledL),
+  Min_Antes = sapply(X_scaledL, min, na.rm = TRUE),
+  Max_Antes = sapply(X_scaledL, max, na.rm = TRUE),
+  Min_Despues = sapply(X_scaledL_wins, min, na.rm = TRUE),
+  Max_Despues = sapply(X_scaledL_wins, max, na.rm = TRUE)
+)
+comparacion_rangos
+
+
+par(mfrow = c(1, 2))  # ajusta según la cantidad de variables
+for (col in names(X_scaledL_wins)) {
+  boxplot(X_scaledL_wins[[col]], 
+          main = col, 
+          col = "lightblue", 
+          border = "darkblue",
+          outline = TRUE,
+          cex.axis = 0.6, cex.main = 0.8)
+}
+par(mfrow = c(1, 1))
+```
+
+
+
 
 ## Combinar datos en un dataset final
 
 ```{r}
-datos_finalR <- cbind(X_scaledR, Materia_Organica = yR)
-datos_finalR <- na.omit(datos_finalR)
-head(datos_finalR)
+datos_finalL <- cbind(X_scaledL_wins, Materia_Organica = yL)
+datos_finalL <- na.omit(datos_finalL)
+head(datos_finalL)
+
 ```
 
-## MODELO RIDGE (α = 0)
+#  MODELO Ridge (α = 1)
 
 ```{r}
 set.seed(1235)
-id_train <- sample(1:nrow(datos_finalR), size = 0.7 * nrow(datos_finalR), replace = FALSE)
+id_train <- sample(1:nrow(datos_finalL), size = 0.7 * nrow(datos_finalL), replace = F)
 
-datos_train <- datos_finalR[id_train, ]
-datos_test <- datos_finalR[-id_train, ]
+datos_train <- datos_finalL[id_train, ]
+datos_test  <- datos_finalL[-id_train, ]
 
 dim(datos_train); dim(datos_test)
 ```
 
 ```{r}
-x_train <- model.matrix(Materia_Organica ~ ., data = datos_train)[, -1]
-y_train <- datos_train$Materia_Organica
+x_train <- model.matrix(Materia_Organica ~ ., data = datos_train)[, -1] # El -1 quita la primera columna (intercepto)
+y_pre_train <- datos_train$Materia_Organica
 
 x_test <- model.matrix(Materia_Organica ~ ., data = datos_test)[, -1]
-y_test <- datos_test$Materia_Organica
+y_pre_test <- datos_test$Materia_Organica
+
+y_train <- log1p(y_pre_train) 
+y_test <- log1p(y_pre_test)
 ```
 
 ```{r}
-library(glmnet)
-
 modelo <- glmnet(
   x = x_train,
   y = y_train,
-  alpha = 0,      # Regularización Ridge
-  nlambda = 100,
-  standardize = TRUE
+  alpha = 0, #Ridge
+  nlambda = 100, 
+  standardize = TRUE 
 )
 ```
 
-
 ```{r}
+# Error medio de validación cruzada
 regularizacion <- modelo$beta %>%
 as.matrix() %>%
 t() %>%
@@ -277,39 +270,37 @@ y = "Valor del coeficiente") +
 theme_bw() +
 theme(legend.position = "none")
 ```
+# Evolución del error en función de lambda
 
 ```{r}
 set.seed(123)
 cv_error <- cv.glmnet(
 x = x_train,
 y = y_train,
-alpha = 0,           # 0 = Ridge
-nfolds = 10,
-type.measure = "mse",
-standardize = TRUE
+alpha = 0, # Ridge
+nfolds = 10, # Validación cruzada de 10 pliegues
+type.measure = "mse"
 )
 
 plot(cv_error)
+
 ```
 
 ```{r}
 paste("Mejor Lambda encontrado:", cv_error$lambda.min)
 ```
-
 ```{r}
 paste("Lambda óptimo + 1 desviación estándar:", cv_error$lambda.1se)
 ```
-
 ```{r}
 modelo <- glmnet(
 x = x_train,
 y = y_train,
-alpha = 0,
+alpha = 0, #Ridge
 lambda = cv_error$lambda.1se,
 standardize = TRUE
 )
 ```
-
 
 ```{r}
 df_coeficientes <- coef(modelo) %>%
@@ -327,8 +318,8 @@ x = "Variable", y = "Valor del coeficiente") +
 theme_bw() +
 theme(axis.text.y = element_text(size = 7))
 
-library(writexl)
-write_xlsx(df_coeficientes, "Coeficientes_Ridge.xlsx")
+library(xlsx)
+write.xlsx(df_coeficientes, "Coeficientes_ridge.xlsx")
 
 ```
 
@@ -337,8 +328,8 @@ predicciones_train <- predict(modelo, newx = x_train)
 ```
 
 ```{r}
-training_lasso <- mean((predicciones_train - y_train)^2)
-paste("Error (MSE) de entrenamiento:", training_lasso)
+training_ridge <- mean((predicciones_train - y_train)^2)
+paste("Error (MSE) de entrenamiento:", training_ridge)
 ```
 
 ```{r}
@@ -346,8 +337,8 @@ predicciones_test <- predict(modelo, newx = x_test)
 ```
 
 ```{r}
-test_mse_lasso <- mean((predicciones_test - y_test)^2)
-paste("Error (MSE) de test:", test_mse_lasso)
+test_mse_ridge <- mean((predicciones_test - y_test)^2)
+paste("Error (MSE) de test:", test_mse_ridge)
 ```
 
 ```{r}
@@ -358,3 +349,30 @@ mean(abs((real - pred) / real), na.rm = TRUE)
 MAPE_val <- round(MAPE(predicciones_test, y_test) * 100, 2)
 paste("MAPE:", MAPE_val, "%")
 ```
+
+# Comparación predicciones con los valores reales de Materia orgánica.
+
+```{r}
+# Volver a la escala original: exp(valor) - 1
+pred_test_real <- exp(predicciones_test) - 1
+real_test <- exp(y_test) - 1
+
+head(pred_test_real)
+head(real_test)
+```
+
+
+```{r}
+comparacion <- data.frame(
+  Real = round(real_test[1:15], 3),
+  Predicho = round(pred_test_real[1:15], 3)
+)
+
+comparacion
+```
+
+
+
+
+El modelo Ridge blablalblablabv 
+Por cierto, el modelo ridge tiene la grafica de lineas bonita y la de lasso no mmm.
