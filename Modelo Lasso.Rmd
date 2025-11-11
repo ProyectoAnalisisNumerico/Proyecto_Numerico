@@ -57,13 +57,7 @@ datosL1 <- datosL[, !names(datosL) %in% c(
   "Hierro disponible doble acido",
   "Cobre disponible doble acido",
   "Manganeso disponible doble acido",
-  "Zinc disponible doble acido",
-  "Fósforo Bray II",
-  "Azufre Fosfato monocalcico",
-  "Acidez Intercambiable",
-  "Aluminio intercambiable",
-  "Calcio intercambiable",
-  "Cobre disponible"
+  "Zinc disponible doble acido"
 )]
 
 # Verificar que esten las variables que se utilizaran para el modelo Lasso
@@ -110,7 +104,13 @@ cols_numericas <- c(
   "Hierro disponible olsen",
   "Manganeso disponible Olsen",
   "Zinc disponible Olsen",
-  "Boro disponible"
+  "Boro disponible",
+  "Fósforo Bray II",
+  "Azufre Fosfato monocalcico",
+  "Acidez Intercambiable",
+  "Aluminio intercambiable",
+  "Calcio intercambiable",
+  "Cobre disponible"
 )
 
 datosL2[cols_numericas] <- lapply(datosL2[cols_numericas], limpiar_columna)
@@ -143,8 +143,6 @@ X_scaledL <- as.data.frame(scale(XL))
 # Verificar medias y desviaciones
 apply(X_scaledL, 2, mean, na.rm = TRUE)[1:5]   # deberían ser ~0
 apply(X_scaledL, 2, sd, na.rm = TRUE)[1:5]     # deberían ser ~1
-
-
 ```
 ## Eliminar Outliers Extremos
 
@@ -222,7 +220,7 @@ y_test <- log1p(y_pre_test)
 modelo <- glmnet(
   x = x_train,
   y = y_train,
-  alpha = 1, # Regularización LASSO (L1)
+  alpha = 1,
   nlambda = 100, 
   standardize = FALSE 
 )
