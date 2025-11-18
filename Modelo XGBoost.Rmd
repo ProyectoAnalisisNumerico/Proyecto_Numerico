@@ -373,11 +373,11 @@ dtest  <- xgb.DMatrix(data = as.matrix(x_test), label = y_test)
 parametros <- list(
 booster = "gbtree",         # tipo de modelo
 objective = "reg:squarederror",  # regresión continua
-eta = 0.03,                 # tasa de aprendizaje
+eta = 0.01,                 # tasa de aprendizaje
 max_depth = 8,              # profundidad de los árboles
-subsample = 0.8,            # muestreo aleatorio de observaciones
+subsample = 0.7,            # muestreo aleatorio de observaciones
 colsample_bytree = 0.9,     # muestreo aleatorio de variables
-min_child_weight = 6,  # mínimo peso para dividir nodos
+min_child_weight = 5,  # mínimo peso para dividir nodos
 gamma = 0                   # regularización adicional
 )
 
@@ -387,7 +387,7 @@ set.seed(123)
 xgb_model <- xgb.train(
 params = parametros,
 data = dtrain,
-nrounds = 5000,                     # número máximo de iteraciones
+nrounds = 10000,                     # número máximo de iteraciones
 watchlist = list(train = dtrain, test = dtest),
 early_stopping_rounds = 30,        # detenerse si no mejora el error
 print_every_n = 20,                # mostrar progreso cada 20 iteraciones
