@@ -1,0 +1,27 @@
+# Archivos de R
+.Rhistory
+.RData
+.Ruserdata
+.RDataTmp
+
+# Archivos temporales
+*.Rproj.user
+*.Rproj
+.Rproj.user/
+
+# Archivos generados por RStudio
+.Rproj.user/*
+.Rhistory
+.RData
+.Ruserdata
+
+# Logs
+*.log
+
+# Carpeta de caché de paquetes en renv
+renv/library/
+renv/staging/
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db
