@@ -1,5 +1,5 @@
 ---
-title: "Modelo Lasso"
+title: "Modelo Lasso y XGBoost"
 output: word_document
 ---
 
